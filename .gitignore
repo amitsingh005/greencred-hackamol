@@ -36,3 +36,10 @@ env/
 
 # Node (if any tooling)
 node_modules/
+__pycache__/
+*.pyc
+db.sqlite3
+.env
+venv/
+media/
+staticfiles/
