@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Seed Demo Data — GreenCred{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🌱 Seed Demo Data</h1>
+        <p class="page-subtitle">Populate the database with demo users, challenges, and actions</p>
+    </div>
+</div>
+
+<div style="max-width:640px;">
+    <div class="card" style="padding:28px;margin-bottom:20px;">
+        <h2 style="font-size:1rem;font-weight:700;color:var(--text-dark);margin-bottom:8px;">What will be seeded?</h2>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:6px;">
+            <li style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--text-body);">
+                <span style="width:20px;text-align:center;">🎖️</span> 8 Badges (first_seed, tree_champion, clean_streets, week_warrior, earth_guardian, challenge_done, pioneer, crew_player)
+            </li>
+            <li style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--text-body);">
+                <span style="width:20px;text-align:center;">👥</span> 3 Demo Users (Arjun Sharma, Priya Nair, Rohit Verma)
+            </li>
+            <li style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--text-body);">
+                <span style="width:20px;text-align:center;">⚡</span> 3 Active Challenges (Delhi, Yamuna, NIT Jalandhar)
+            </li>
+            <li style="display:flex;align-items:center;gap:8px;font-size:0.85rem;color:var(--text-body);">
+                <span style="width:20px;text-align:center;">🌿</span> 10 Eco Actions with Unsplash images (all 6 types)
+            </li>
+        </ul>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:20px;">
+        <button class="btn btn-accent btn-lg" style="flex:1;" id="seed-btn">
+            🌱 Seed Demo Data
+        </button>
+        <button class="btn btn-danger" id="clear-btn">
+            🗑️ Clear All
+        </button>
+    </div>
+
+    <div class="seed-log" id="seed-log" style="display:none;">
+        <span style="color:#cdd6f4;">GreenCred Seeder v1.0</span><br>
+        <span id="log-lines"></span>
+    </div>
+
+    <div id="seed-success" style="display:none;text-align:center;padding:24px;">
+        <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+        <div style="font-weight:700;color:var(--text-dark);font-size:1.1rem;margin-bottom:8px;">All seeded successfully!</div>
+        <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px;">The demo data is ready. Login with any demo account to explore.</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <a href="/" class="btn btn-primary">🌿 Go to Feed</a>
+            <a href="/login/" class="btn btn-outline">👤 Login</a>
+            <a href="/leaderboard/" class="btn btn-ghost">🏆 Leaderboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const seedBtn = document.getElementById('seed-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const logEl = document.getElementById('seed-log');
+    const logLines = document.getElementById('log-lines');
+    const successEl = document.getElementById('seed-success');
+
+    function appendLog(line) {
+        logLines.innerHTML += line + '<br>';
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    seedBtn.addEventListener('click', async () => {
+        seedBtn.disabled = true;
+        clearBtn.disabled = true;
+        seedBtn.textContent = '⏳ Seeding...';
+        logEl.style.display = 'block';
+        successEl.style.display = 'none';
+        logLines.innerHTML = '';
+
+        appendLog('> Starting seed process...<br>');
+
+        try {
+            const data = await seedData();
+            data.log.forEach((line, i) => {
+                setTimeout(() => appendLog(line), i * 120);
+            });
+            setTimeout(() => {
+                successEl.style.display = 'block';
+                seedBtn.textContent = '✅ Seeded!';
+            }, data.log.length * 120 + 300);
+        } catch (err) {
+            appendLog(`<span style="color:#f38ba8;">✗ Error: ${err.message}</span>`);
+            appendLog('<span style="color:#f38ba8;">Make sure Django is running on port 8000.</span>');
+            seedBtn.disabled = false;
+            clearBtn.disabled = false;
+            seedBtn.textContent = '🌱 Seed Demo Data';
+        }
+    });
+
+    clearBtn.addEventListener('click', async () => {
+        if (!confirm('Clear ALL data? This cannot be undone.')) return;
+        clearBtn.disabled = true;
+        clearBtn.textContent = '⏳ Clearing...';
+        logEl.style.display = 'block';
+        successEl.style.display = 'none';
+        logLines.innerHTML = '';
+
+        try {
+            const data = await clearData();
+            appendLog('> ' + data.message);
+            appendLog('✅ All data cleared');
+            setTimeout(() => {
+                clearBtn.textContent = '✅ Cleared!';
+                seedBtn.disabled = false;
+                seedBtn.textContent = '🌱 Seed Demo Data';
+            }, 300);
+        } catch (err) {
+            appendLog(`<span style="color:#f38ba8;">✗ Error: ${err.message}</span>`);
+            clearBtn.disabled = false;
+            clearBtn.textContent = '🗑️ Clear All';
+        }
+    });
+});
+</script>
+{% endblock %}

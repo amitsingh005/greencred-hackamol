@@ -1,0 +1,253 @@
+{% extends 'base.html' %}
+{% block title %}Eco Challenges — GreenCred{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">⚡ Eco Challenges</h1>
+        <p class="page-subtitle">Join environmental campaigns and make collective impact</p>
+    </div>
+    <button class="btn btn-primary" id="open-challenge-modal">
+        + Create Challenge
+    </button>
+</div>
+
+<!-- Status Tabs -->
+<div class="tabs" id="challenge-tabs" style="margin-bottom:24px;">
+    <button class="tab active" data-status="active">Active</button>
+    <button class="tab" data-status="completed">Completed</button>
+</div>
+
+<!-- Challenge Grid -->
+<div id="challenge-grid" class="challenge-grid">
+    <!-- Skeletons -->
+    <div class="card" style="padding:24px;">
+        <div class="skeleton" style="height:16px;width:60%;border-radius:4px;margin-bottom:12px;"></div>
+        <div class="skeleton" style="height:12px;margin-bottom:8px;border-radius:4px;"></div>
+        <div class="skeleton" style="height:8px;border-radius:20px;margin-bottom:16px;"></div>
+        <div class="skeleton" style="height:36px;border-radius:8px;"></div>
+    </div>
+    <div class="card" style="padding:24px;">
+        <div class="skeleton" style="height:16px;width:70%;border-radius:4px;margin-bottom:12px;"></div>
+        <div class="skeleton" style="height:12px;margin-bottom:8px;border-radius:4px;"></div>
+        <div class="skeleton" style="height:8px;border-radius:20px;margin-bottom:16px;"></div>
+        <div class="skeleton" style="height:36px;border-radius:8px;"></div>
+    </div>
+</div>
+
+<!-- Create Challenge Modal -->
+<div class="modal-overlay" id="challenge-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">⚡ Create Challenge</h2>
+            <button class="modal-close" id="close-challenge-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Title</label>
+                <input class="form-input" type="text" id="c-title" placeholder="e.g. Plant 100 Trees in Mumbai 🌳">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-textarea" id="c-desc" placeholder="Describe your challenge goal..."></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" id="c-type">
+                        <option value="Open">Open</option>
+                        <option value="Local">Local</option>
+                        <option value="Corporate">Corporate</option>
+                        <option value="Campus">Campus</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Action Type</label>
+                    <select class="form-select" id="c-action-type">
+                        <option value="tree_planting">🌳 Tree Planting</option>
+                        <option value="cleanup">🧹 Cleanup</option>
+                        <option value="upcycling">♻️ Upcycling</option>
+                        <option value="transport">🚲 Transport</option>
+                        <option value="energy">⚡ Energy</option>
+                        <option value="advocacy">📣 Advocacy</option>
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Target Count</label>
+                    <input class="form-input" type="number" id="c-target" min="1" value="100">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End Date</label>
+                    <input class="form-input" type="date" id="c-end-date">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Location</label>
+                <input class="form-input" type="text" id="c-location" placeholder="City, State">
+            </div>
+            <button class="btn btn-primary btn-full btn-lg" id="submit-challenge-btn">
+                ⚡ Create Challenge
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const user = requireAuth();
+    if (!user) return;
+
+    // Set default end date to 30 days from now
+    const endInput = document.getElementById('c-end-date');
+    const d = new Date();
+    d.setDate(d.getDate() + 30);
+    endInput.value = d.toISOString().split('T')[0];
+
+    // Modal
+    const modal = document.getElementById('challenge-modal');
+    document.getElementById('open-challenge-modal').addEventListener('click', () => modal.classList.add('open'));
+    document.getElementById('close-challenge-modal').addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+    // Tabs
+    document.querySelectorAll('#challenge-tabs .tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('#challenge-tabs .tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            loadChallenges(tab.dataset.status);
+        });
+    });
+
+    // Create Challenge
+    document.getElementById('submit-challenge-btn').addEventListener('click', async () => {
+        const title = document.getElementById('c-title').value.trim();
+        const desc = document.getElementById('c-desc').value.trim();
+        const location = document.getElementById('c-location').value.trim();
+        const target = parseInt(document.getElementById('c-target').value);
+        const endDate = document.getElementById('c-end-date').value;
+        const type = document.getElementById('c-type').value;
+        const actionType = document.getElementById('c-action-type').value;
+
+        if (!title || !desc || !location || !endDate) {
+            showToast('Please fill all required fields', 'error'); return;
+        }
+
+        const btn = document.getElementById('submit-challenge-btn');
+        btn.disabled = true; btn.textContent = '⏳ Creating...';
+
+        try {
+            const result = await createChallenge({ title, description: desc, location, target_count: target, end_date: endDate, challenge_type: type, action_type: actionType });
+            modal.classList.remove('open');
+            showToast('⚡ Challenge created!', 'success');
+            loadChallenges('active');
+        } catch (err) {
+            showToast('Failed: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = '⚡ Create Challenge';
+        }
+    });
+
+    async function loadChallenges(status = 'active') {
+        const grid = document.getElementById('challenge-grid');
+        grid.innerHTML = `
+            <div class="card" style="padding:24px;"><div class="skeleton" style="height:16px;width:60%;border-radius:4px;margin-bottom:12px;"></div><div class="skeleton" style="height:8px;border-radius:20px;margin-bottom:16px;"></div><div class="skeleton" style="height:36px;border-radius:8px;"></div></div>
+            <div class="card" style="padding:24px;"><div class="skeleton" style="height:16px;width:70%;border-radius:4px;margin-bottom:12px;"></div><div class="skeleton" style="height:8px;border-radius:20px;margin-bottom:16px;"></div><div class="skeleton" style="height:36px;border-radius:8px;"></div></div>`;
+
+        try {
+            const data = await getChallenges(status);
+            if (data.challenges.length === 0) {
+                grid.innerHTML = `<div class="empty-state card" style="grid-column:1/-1;padding:60px;"><div class="empty-state-icon">⚡</div><div class="empty-state-title">No ${status} challenges</div><p class="empty-state-text">Be the first to create one for your community, campus, or workplace!</p><button class="btn btn-primary" onclick="document.getElementById('open-challenge-modal').click()">+ Create Challenge</button></div>`;
+                return;
+            }
+            grid.innerHTML = data.challenges.map(renderChallengeCard).join('');
+
+            // Attach join handlers
+            grid.querySelectorAll('.join-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleJoin(btn));
+            });
+        } catch (err) {
+            grid.innerHTML = `<div class="empty-state card" style="grid-column:1/-1;"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">${err.message}</div></div>`;
+        }
+    }
+
+    function renderChallengeCard(c) {
+        const typeClass = 'pill-type-' + c.challenge_type.toLowerCase();
+        const actionEmoji = getActionEmoji(c.action_type);
+        const daysLeft = c.days_left;
+        const daysColor = daysLeft <= 3 ? '#ef4444' : daysLeft <= 7 ? '#f97316' : 'var(--text-muted)';
+        const joinedText = c.is_joined ? '✓ Joined' : '+ Join';
+        const joinedClass = c.is_joined ? 'btn-outline' : 'btn-primary';
+
+        return `
+        <div class="challenge-card animate-in">
+            <div class="challenge-card-header">
+                <div>
+                    <span class="pill ${typeClass}">${c.challenge_type}</span>
+                    <span class="pill" style="margin-left:4px;background:var(--surface);color:var(--text-muted);">${actionEmoji} ${getActionLabel(c.action_type)}</span>
+                </div>
+            </div>
+            <div class="challenge-title">${c.title}</div>
+            <p class="challenge-desc">${c.description}</p>
+
+            <div class="progress-bar-wrap">
+                <div class="progress-bar-fill" style="width:${c.progress_percent}%;"></div>
+            </div>
+            <div class="progress-text">
+                <span>${c.current_count}/${c.target_count} actions</span>
+                <span>${c.progress_percent}%</span>
+            </div>
+
+            <div class="challenge-meta">
+                <div class="challenge-meta-item">📍 ${c.location}</div>
+                <div class="challenge-meta-item" style="color:${daysColor};">⏰ ${daysLeft}d left</div>
+                <div class="challenge-meta-item">👥 ${c.participants_count} joined</div>
+                <div class="challenge-meta-item">🏅 ${c.badge_reward}</div>
+            </div>
+
+            <button class="btn ${joinedClass} btn-full join-btn"
+                data-challenge-id="${c.id}"
+                data-joined="${c.is_joined}">
+                ${joinedText}
+            </button>
+        </div>`;
+    }
+
+    async function handleJoin(btn) {
+        const challengeId = btn.dataset.challengeId;
+        const wasJoined = btn.dataset.joined === 'true';
+        btn.disabled = true;
+
+        try {
+            const result = await joinChallenge(challengeId);
+            btn.dataset.joined = result.joined;
+
+            if (result.joined) {
+                btn.textContent = '✓ Joined';
+                btn.className = 'btn btn-outline btn-full join-btn';
+                showToast('Joined challenge! 🎉', 'success');
+            } else {
+                btn.textContent = '+ Join';
+                btn.className = 'btn btn-primary btn-full join-btn';
+                showToast('Left challenge', 'info');
+            }
+
+            if (result.newly_awarded_badges && result.newly_awarded_badges.length > 0) {
+                result.newly_awarded_badges.forEach(b => {
+                    showToast(`🏅 Badge unlocked: ${b.replace(/_/g,' ')}!`, 'badge', 5000);
+                });
+            }
+        } catch (err) {
+            showToast('Failed: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    loadChallenges('active');
+});
+</script>
+{% endblock %}

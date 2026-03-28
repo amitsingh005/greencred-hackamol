@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Seed - GreenCred{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+    <h1 class="text-4xl font-bold text-green-900 mb-8 text-center">🌱 Admin Seed Data</h1>
+    
+    <div id="seed-status" class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+        <div class="text-center mb-8">
+            <button id="seed-btn" class="bg-lime-400 hover:bg-lime-500 text-green-900 px-8 py-4 rounded-2xl font-bold text-xl shadow-lg transition-all duration-200">
+                🚀 Seed Demo Data
+            </button>
+        </div>
+        <div id="progress-log" class="space-y-2 max-h-96 overflow-y-auto text-sm">
+            <div class="text-gray-500">Ready to seed Firestore collections...</div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4">What gets seeded:</h2>
+        <ul class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <li class="flex items-center p-3 bg-gray-50 rounded-xl">
+                <span class="w-8 text-center font-bold mr-3">8️⃣</span>
+                Badges (first_seed, tree_champion etc.)
+            </li>
+            <li class="flex items-center p-3 bg-gray-50 rounded-xl">
+                <span class="w-8 text-center font-bold mr-3">3️⃣</span>
+                Demo users (Arjun, Priya, Rohit with credits/ranks)
+            </li>
+            <li class="flex items-center p-3 bg-gray-50 rounded-xl">
+                <span class="w-8 text-center font-bold mr-3">3️⃣</span>
+                Active challenges (Delhi Trees, Yamuna Cleanup, NIT Zero Waste)
+            </li>
+            <li class="flex items-center p-3 bg-gray-50 rounded-xl">
+                <span class="w-8 text-center font-bold mr-3">🔟</span>
+                Sample actions with images/credits
+            </li>
+        </ul>
+        <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <p class="font-medium text-yellow-800"><strong>Note:</strong> Fill Firebase config in base.html first. Clears existing demo data.</p>
+        </div>
+        <button id="clear-btn" class="mt-4 bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-xl font-medium ml-auto block">
+            🗑️ Clear Demo Data
+        </button>
+    </div>
+</div>
+
+<script>
+document.getElementById('seed-btn').addEventListener('click', async () => {
+    const logEl = document.getElementById('progress-log');
+    const btn = document.getElementById('seed-btn');
+    
+    btn.disabled = true;
+    btn.textContent = 'Seeding... ⏳';
+    
+    try {
+        logEl.innerHTML += '<div class="text-blue-600">🔄 Starting seed process...</div>';
+        
+        // 1. SEED BADGES
+        logEl.innerHTML += '<div class="text-blue-600">1/4 Seeding 8 badges...</div>';
+        const badgesData = [
+            {id: 'first_seed', name: 'First Seed', emoji: '🌱', description: 'Log your first action', criteria: '1 action', category: 'Beginner'},
+            {id: 'tree_champion', name: 'Tree Champion', emoji: '🌳', description: 'Plant 5 trees total', criteria: 'treesPlanted >= 5', category: 'Nature'},
+            {id: 'clean_streets', name: 'Clean Streets', emoji: '🧹', description: 'Complete 3 cleanup drives', criteria: 'cleanupsDone >= 3', category: 'Community'},
+            {id: 'week_warrior', name: 'Week Warrior', emoji: '🔥', description: 'Maintain a 7-day streak', criteria: 'streak >= 7', category: 'Consistency'},
+            {id: 'earth_guardian', name: 'Earth Guardian', emoji: '🌍', description: 'Reach 5,000 GreenCredits', criteria: 'greenCredits >= 5000', category: 'Elite'},
+            {id: 'challenge_done', name: 'Challenge Finisher', emoji: '🏆', description: 'Complete any eco challenge', criteria: 'challengesCompleted >= 1', category: 'Teamwork'},
+            {id: 'pioneer', name: 'Pioneer', emoji: '⚡', description: 'First to log a specific action type', criteria: 'first action type', category: 'Innovation'},
+            {id: 'crew_player', name: 'Crew Player', emoji: '🤝', description: 'Join 3 different challenges', criteria: 'participants in 3 challenges', category: 'Teamwork'}
+        ];
+        
+        for (const badge of badgesData) {
+            await db.collection('badges').doc(badge.id).set({
+                ...badge,
+                issuedBy: 'GreenCred Platform'
+            });
+        }
+        logEl.innerHTML += '<div class="text-green-600">✅ Badges seeded (8/8)</div>';
+
+        // 2. SEED USERS
+        logEl.innerHTML += '<div class="text-blue-600">2/4 Seeding 3 demo users...</div>';
+        const usersData = [
+            {
+                uid: 'user_arjun',
+                displayName: 'Arjun Sharma',
+                email: 'arjun@example.com',
+                greenCredits: 3200,
+                rank: 'Ecosystem Builder',
+                streak: 14,
+                totalActions: 18,
+                treesPlanted: 12,
+                cleanupsDone: 5,
+                challengesCompleted: 2,
+                joinedAt: firebase.firestore.Timestamp.now(),
+                badges: ['first_seed', 'tree_champion', 'week_warrior']
+            },
+            {
+                uid: 'user_priya',
+                displayName: 'Priya Nair',
+                email: 'priya@example.com',
+                greenCredits: 850,
+                rank: 'Grove Keeper',
+                streak: 7,
+                totalActions: 11,
+                treesPlanted: 3,
+                cleanupsDone: 6,
+                challengesCompleted: 1,
+                joinedAt: firebase.firestore.Timestamp.now(),
+                badges: ['first_seed', 'clean_streets']
+            },
+            {
+                uid: 'user_rohit',
+                displayName: 'Rohit Verma',
+                email: 'rohit@example.com',
+                greenCredits: 180,
+                rank: 'Sprout',
+                streak: 3,
+                totalActions: 5,
+                treesPlanted: 2,
+                cleanupsDone: 1,
+                challengesCompleted: 0,
+                joinedAt: firebase.firestore.Timestamp.now(),
+                badges: ['first_seed']
+            }
+        ];
+        
+        for (const user of usersData) {
+            await db.collection('users').doc(user.uid).set(user);
+        }
+        logEl.innerHTML += '<div class="text-green-600">✅ Users seeded (3/3)</div>';
+
+        // 3. SEED CHALLENGES
+        logEl.innerHTML += '<div class="text-blue-600">3/4 Seeding 3 challenges...</div>';
+        const challengesData = [
+            {
+                id: 'challenge_delhi_trees',
+                title: 'Plant 1000 Trees in Delhi 🌳',
+                description: 'Community tree planting drive across Delhi',
+                type: 'Open',
+                actionType: 'Tree Planting',
+                targetCount: 1000,
+                currentCount: 347,
+                startDate: firebase.firestore.Timestamp.now(),
+                endDate: new Date(Date.now() + 30*24*60*60*1000),
+                createdBy: 'user_arjun',
+                creatorName: 'Arjun Sharma',
+                participants: ['user_arjun', 'user_priya', 'user_rohit'],
+                badgeReward: 'challenge_done',
+                status: 'active',
+                location: 'Delhi, India'
+            },
+            {
+                id: 'challenge_yamuna',
+                title: 'Clean the Yamuna River 🧹',
+                description: 'Mass cleanup along Yamuna banks',
+                type: 'Local',
+                actionType: 'Clean-up Drive',
+                targetCount: 500,
+                currentCount: 218,
+                startDate: firebase.firestore.Timestamp.now(),
+                endDate: new Date(Date.now() + 15*24*60*60*1000),
+                createdBy: 'user_arjun',
+                creatorName: 'Arjun Sharma',
+                participants: ['user_arjun', 'user_priya'],
+                badgeReward: 'challenge_done',
+                status: 'active',
+                location: 'North Delhi, Yamuna Bank'
+            },
+            {
+                id: 'challenge_nit',
+                title: 'NIT Jalandhar — Zero Waste Month ♻️',
+                description: 'Campus upcycling and waste reduction challenge',
+                type: 'Campus',
+                actionType: 'Upcycling / Repair',
+                targetCount: 200,
+                currentCount: 89,
+                startDate: firebase.firestore.Timestamp.now(),
+                endDate: new Date(Date.now() + 20*24*60*60*1000),
+                createdBy: 'user_priya',
+                creatorName: 'Priya Nair',
+                participants: ['user_priya', 'user_rohit'],
+                badgeReward: 'challenge_done',
+                status: 'active',
+                location: 'NIT Jalandhar, Punjab'
+            }
+        ];
+        
+        for (const challenge of challengesData) {
+            await db.collection('challenges').doc(challenge.id).set(challenge);
+        }
+        logEl.innerHTML += '<div class="text-green-600">✅ Challenges seeded (3/3)</div>';
+
+        // 4. SEED ACTIONS
+        logEl.innerHTML += '<div class="text-blue-600">4/4 Seeding 10 sample actions...</div>';
+        const actionImages = [
+            'https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800',
+            'https://images.unsplash.com/photo-1558618047-3c8c76ffe9f2?w=800',
+            'https://images.unsplash.com/photo-1583337130417-3346a1be7dee?w=800',
+            'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800',
+            'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?w=800',
+            'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800',
+            'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800',
+            'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800',
+            'https://images.unsplash.com/photo-1590736969950-f60968874368?w=800',
+            'https://images.unsplash.com/photo-1564066093306-7ce92bd23bd3?w=800'
+        ];
+        
+        const actionsData = [
+            {userId: 'user_arjun', actionType: 'Tree Planting', description: 'Planted 3 native trees in Lodhi Garden', location: 'Delhi', creditsEarned: 90, imageURL: actionImages[0]},
+            {userId: 'user_priya', actionType: 'Clean-up Drive', description: 'Organized Yamuna riverside cleanup with 20 volunteers', location: 'Delhi', creditsEarned: 75, imageURL: actionImages[1]},
+            {userId: 'user_rohit', actionType: 'Sustainable Transport', description: 'Cycled 50km this week for work and errands', location: 'Chandigarh', creditsEarned: 45, imageURL: actionImages[2]},
+            {userId: 'user_arjun', actionType: 'Upcycling / Repair', description: 'Repaired 15 old electronics for campus e-waste drive', location: 'NIT Jalandhar', creditsEarned: 60, imageURL: actionImages[3]},
+            {userId: 'user_priya', actionType: 'Energy / Water Saving', description: 'Installed solar panels on hostel rooftop (saved 200kWh)', location: 'NIT Jalandhar', creditsEarned: 30, imageURL: actionImages[4]},
+            // ... 5 more similar
+        ];
+        
+        for (let i = 0; i < 10; i++) {
+            const action = {
+                userId: ['user_arjun', 'user_priya', 'user_rohit'][i % 3],
+                userDisplayName: ['Arjun Sharma', 'Priya Nair', 'Rohit Verma'][i % 3],
+                userPhotoURL: `https://ui-avatars.com/api/?name=${['Arjun', 'Priya', 'Rohit'][i % 3]}`,
+                actionType: ['Tree Planting', 'Clean-up Drive', 'Upcycling / Repair', 'Sustainable Transport', 'Energy / Water Saving', 'Community Advocacy'][i % 6],
+                description: `Sample action ${i+1} - great eco work!`,
+                location: ['Delhi', 'NIT Jalandhar', 'Chandigarh'][i % 3],
+                imageURL: actionImages[i % actionImages.length],
+                creditsEarned: [30, 25, 20, 15, 10, 10][i % 6] * (1 + Math.floor(i/3)*0.1),
+                status: 'approved',
+                likes: Math.floor(Math.random()*20),
+                challengeId: i < 6 ? `challenge_${['delhi_trees', 'yamuna', 'nit'][i % 3]}` : null,
+                createdAt: firebase.firestore.Timestamp.fromDate(new Date(Date.now() - i*60*60*1000))
+            };
+            await db.collection('actions').add(action);
+        }
+        logEl.innerHTML += '<div class="text-green-600 font-bold text-lg">🎉 ALL DEMO DATA SEEDED! Visit /feed</div>';
+        
+        btn.textContent = '✅ Seeded!';
+        btn.classList.add('bg-green-500');
+        
+    } catch (error) {
+        logEl.innerHTML += `<div class="text-red-600">❌ Error: ${error.message}</div>`;
+        btn.textContent = 'Seed Failed - Retry';
+        btn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

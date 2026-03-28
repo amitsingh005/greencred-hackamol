@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% block title %}Leaderboard — GreenCred{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🏆 Leaderboard</h1>
+        <p class="page-subtitle">Top Eco Warriors making a real difference</p>
+    </div>
+    <div class="tabs" id="period-tabs">
+        <button class="tab active" data-period="all">All Time</button>
+        <button class="tab" data-period="week">This Week</button>
+    </div>
+</div>
+
+<!-- Podium (Top 3) -->
+<div id="podium" style="display:none;background:linear-gradient(135deg,var(--primary),#10b981);border-radius:var(--radius-xl);padding:32px;margin-bottom:24px;position:relative;overflow:hidden;">
+    <div style="position:absolute;inset:0;opacity:0.05;background:url('data:image/svg+xml,%3Csvg width=40 height=40 viewBox=&quot;0 0 40 40&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;%3E%3Cg fill=&quot;white&quot; fill-opacity=&quot;1&quot;%3E%3Ccircle cx=20 cy=20 r=1/%3E%3C/g%3E%3C/svg%3E');"></div>
+    <div style="display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:16px;align-items:end;max-width:500px;margin:0 auto;" id="podium-inner">
+    </div>
+</div>
+
+<!-- Full Table -->
+<div class="card">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border-light);font-weight:700;color:var(--text-muted);font-size:0.8rem;display:grid;grid-template-columns:60px 48px 1fr 100px 80px 70px;gap:8px;align-items:center;">
+        <span>Rank</span>
+        <span></span>
+        <span>Warrior</span>
+        <span style="text-align:right;">Credits</span>
+        <span style="text-align:center;">Streak</span>
+        <span style="text-align:center;">Actions</span>
+    </div>
+    <div id="leaderboard-list">
+        <!-- Skeleton rows -->
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-light);">
+            <div class="skeleton" style="height:44px;border-radius:8px;"></div>
+        </div>
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border-light);">
+            <div class="skeleton" style="height:44px;border-radius:8px;"></div>
+        </div>
+        <div style="padding:16px 20px;">
+            <div class="skeleton" style="height:44px;border-radius:8px;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const user = requireAuth();
+    if (!user) return;
+
+    let currentPeriod = 'all';
+
+    // Tabs
+    document.querySelectorAll('#period-tabs .tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('#period-tabs .tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            currentPeriod = tab.dataset.period;
+            loadLeaderboard(currentPeriod);
+        });
+    });
+
+    async function loadLeaderboard(period) {
+        const listEl = document.getElementById('leaderboard-list');
+        listEl.innerHTML = `<div style="padding:16px 20px;"><div class="skeleton" style="height:44px;border-radius:8px;margin-bottom:12px;"></div><div class="skeleton" style="height:44px;border-radius:8px;margin-bottom:12px;"></div><div class="skeleton" style="height:44px;border-radius:8px;"></div></div>`;
+
+        try {
+            const data = await getLeaderboard(period);
+            const leaderboard = data.leaderboard;
+
+            if (leaderboard.length === 0) {
+                listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏆</div><div class="empty-state-title">No data yet</div><p class="empty-state-text">Seed demo data to see the leaderboard.</p><a href="/seed/" class="btn btn-accent">🌱 Seed Demo Data</a></div>`;
+                document.getElementById('podium').style.display = 'none';
+                return;
+            }
+
+            // Render podium for top 3
+            renderPodium(leaderboard.slice(0, 3));
+
+            // Render table
+            listEl.innerHTML = leaderboard.map(u => renderRow(u)).join('');
+
+        } catch (err) {
+            listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Could not load leaderboard</div><p>${err.message}</p></div>`;
+        }
+    }
+
+    function renderPodium(top3) {
+        if (top3.length < 1) { document.getElementById('podium').style.display = 'none'; return; }
+
+        // Reorder: 2nd, 1st, 3rd for podium visual
+        const order = [top3[1], top3[0], top3[2]].filter(Boolean);
+        const heights = top3[1] ? ['120px', '150px', '100px'] : ['100px', '150px', '80px'];
+        const medals = top3[1] ? ['🥈', '🥇', '🥉'] : ['🥇', '🥇', '🥉'];
+        const sizes = top3[1] ? ['60px', '72px', '56px'] : ['72px', '72px', '56px'];
+
+        const html = order.map((u, i) => {
+            if (!u) return '';
+            const avatar = u.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=166534&color=fff`;
+            return `
+            <div style="text-align:center;animation:fadeIn 0.5s ease ${i*0.1}s both;">
+                <div style="font-size:1.6rem;margin-bottom:6px;">${medals[i]}</div>
+                <img src="${avatar}" alt="${u.display_name}" style="width:${sizes[i]};height:${sizes[i]};border-radius:12px;object-fit:cover;border:3px solid rgba(255,255,255,0.4);box-shadow:0 4px 16px rgba(0,0,0,0.2);"
+                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=166534&color=fff'">
+                <div style="color:#fff;font-weight:700;font-size:0.85rem;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.display_name}</div>
+                <div style="background:rgba(255,255,255,0.2);border-radius:20px;padding:3px 10px;font-size:0.75rem;color:#fff;font-weight:700;margin-top:4px;">${u.green_credits} GC</div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('podium-inner').innerHTML = html;
+        document.getElementById('podium').style.display = 'block';
+    }
+
+    function renderRow(u) {
+        const pos = u.position;
+        const isYou = u.is_current_user;
+        const avatar = u.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=166534&color=fff`;
+        const rankClass = pos === 1 ? 'gold' : pos === 2 ? 'silver' : pos === 3 ? 'bronze' : isYou ? 'current-user' : '';
+        const rankEmoji = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : `#${pos}`;
+
+        const rankBg = pos <= 3 ? (pos===1?'#fde68a':pos===2?'#e5e7eb':'#fed7aa') : 'var(--surface)';
+        const rankColor = pos <= 3 ? (pos===1?'#92400e':pos===2?'#374151':'#7c2d12') : 'var(--text-muted)';
+        const userRankClass = getRankClass(u.rank);
+        const userRankEmoji = getRankEmoji(u.rank);
+
+        return `
+        <div class="leaderboard-row ${rankClass}" style="display:grid;grid-template-columns:60px 48px 1fr 100px 80px 70px;gap:8px;align-items:center;">
+            <div class="leaderboard-rank" style="background:${rankBg};color:${rankColor};font-size:${pos<=3?'1.3rem':'1rem'};">
+                ${rankEmoji}
+            </div>
+            <a href="/profile/?uid=${u.firebase_uid}">
+                <img class="leaderboard-avatar" src="${avatar}" alt="${u.display_name}"
+                     onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=166534&color=fff'">
+            </a>
+            <div class="leaderboard-user">
+                <div class="leaderboard-name">
+                    <a href="/profile/?uid=${u.firebase_uid}" style="color:var(--text-dark);">${u.display_name}</a>
+                    ${isYou ? '<span class="you-badge">You</span>' : ''}
+                </div>
+                <span class="rank-chip ${userRankClass}" style="margin-top:2px;">${userRankEmoji} ${u.rank}</span>
+            </div>
+            <div class="leaderboard-credits" style="text-align:right;">${u.green_credits.toLocaleString()}</div>
+            <div class="leaderboard-streak" style="text-align:center;">🔥 ${u.streak}</div>
+            <div style="text-align:center;font-size:0.85rem;color:var(--text-muted);font-weight:600;">${u.total_actions}</div>
+        </div>`;
+    }
+
+    loadLeaderboard('all');
+});
+</script>
+{% endblock %}

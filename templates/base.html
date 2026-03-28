@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GreenCred - Strava for Eco Actions. Track, share and earn credits for your environmental actions.">
+    <title>{% block title %}GreenCred — Strava for Eco Actions{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Firebase SDK (for Google Auth token refresh) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="/static/js/firebase-config.js"></script>
+    <script>
+        // Auto-initialize Firebase if configured
+        if (typeof FIREBASE_CONFIG !== 'undefined' && typeof FIREBASE_CONFIGURED !== 'undefined' && FIREBASE_CONFIGURED) {
+            try {
+                if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+                    firebase.initializeApp(FIREBASE_CONFIG);
+                }
+            } catch(e) { console.warn('Firebase init:', e); }
+        }
+    </script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <a href="/" class="sidebar-brand">
+            <div class="sidebar-logo">🌿</div>
+            <div>
+                <div class="sidebar-brand-text">GreenCred</div>
+                <div class="sidebar-brand-tagline">Strava for Eco Actions</div>
+            </div>
+        </a>
+
+        <nav class="sidebar-nav">
+            <a href="/" class="nav-link" id="nav-feed">
+                <span class="nav-link-icon">🏠</span>
+                <span>Feed</span>
+            </a>
+            <a href="/leaderboard/" class="nav-link" id="nav-leaderboard">
+                <span class="nav-link-icon">🏆</span>
+                <span>Leaderboard</span>
+            </a>
+            <a href="/challenges/" class="nav-link" id="nav-challenges">
+                <span class="nav-link-icon">⚡</span>
+                <span>Challenges</span>
+            </a>
+            <a href="/badges/" class="nav-link" id="nav-badges">
+                <span class="nav-link-icon">🎖️</span>
+                <span>Badges</span>
+            </a>
+            <a href="/profile/" class="nav-link" id="nav-profile">
+                <span class="nav-link-icon">👤</span>
+                <span>Profile</span>
+            </a>
+            <a href="/seed/" class="nav-link" id="nav-seed">
+                <span class="nav-link-icon">🌱</span>
+                <span>Seed Demo</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-user" id="sidebar-user-info" style="display:none">
+                <img src="/static/default-avatar.png" alt="Avatar" class="sidebar-user-avatar" id="sidebar-user-avatar">
+                <div style="min-width:0">
+                    <div class="sidebar-user-name" id="sidebar-user-name">Loading...</div>
+                    <div class="sidebar-user-rank" id="sidebar-user-rank">🌱 Seedling</div>
+                </div>
+            </div>
+            <button class="btn-logout" id="logout-btn" style="display:none">Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Mobile header -->
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-top:4px;" class="mobile-only">
+            <button id="mobile-menu-btn" style="padding:8px;background:#fff;border-radius:8px;border:1px solid #e5e7eb;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                ☰
+            </button>
+            <span style="font-weight:800;color:#14532d;font-size:1.1rem;">🌿 GreenCred</span>
+        </div>
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-nav">
+    <div class="mobile-nav-inner">
+        <a href="/" class="mobile-nav-link" id="mnav-feed">
+            <span class="mobile-nav-link-icon">🏠</span>
+            <span>Feed</span>
+        </a>
+        <a href="/leaderboard/" class="mobile-nav-link" id="mnav-leaderboard">
+            <span class="mobile-nav-link-icon">🏆</span>
+            <span>Leaders</span>
+        </a>
+        <a href="/challenges/" class="mobile-nav-link" id="mnav-challenges">
+            <span class="mobile-nav-link-icon">⚡</span>
+            <span>Challenges</span>
+        </a>
+        <a href="/badges/" class="mobile-nav-link" id="mnav-badges">
+            <span class="mobile-nav-link-icon">🎖️</span>
+            <span>Badges</span>
+        </a>
+        <a href="/profile/" class="mobile-nav-link" id="mnav-profile">
+            <span class="mobile-nav-link-icon">👤</span>
+            <span>Profile</span>
+        </a>
+    </div>
+</nav>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth.js"></script>
+<script>
+    // Show sidebar user info if logged in
+    document.addEventListener('DOMContentLoaded', () => {
+        const user = getCurrentUser();
+        if (user) {
+            const infoEl = document.getElementById('sidebar-user-info');
+            const logoutEl = document.getElementById('logout-btn');
+            if (infoEl) infoEl.style.display = 'flex';
+            if (logoutEl) logoutEl.style.display = 'block';
+        }
+
+        // Set active mobile nav
+        const path = window.location.pathname;
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.classList.remove('active');
+            const href = link.getAttribute('href');
+            if (href === path || (href === '/' && path === '/')) {
+                link.classList.add('active');
+            } else if (href !== '/' && path.startsWith(href)) {
+                link.classList.add('active');
+            }
+        });
+    });
+</script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

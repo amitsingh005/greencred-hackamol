@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sign in to GreenCred — Track your eco actions, earn credits, and compete with eco warriors worldwide.">
+    <title>GreenCred — Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+
+    <!-- Firebase SDK (compat for simplicity) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+</head>
+<body style="margin:0;padding:0;">
+
+<div class="login-page" id="login-page">
+    <!-- Floating eco particles -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+        <span style="position:absolute;top:15%;left:10%;font-size:2rem;opacity:0.15;animation:float1 6s ease-in-out infinite;">🌿</span>
+        <span style="position:absolute;top:70%;left:5%;font-size:1.5rem;opacity:0.1;animation:float2 8s ease-in-out infinite;">🌱</span>
+        <span style="position:absolute;top:30%;right:8%;font-size:3rem;opacity:0.1;animation:float1 7s ease-in-out infinite 1s;">🌳</span>
+        <span style="position:absolute;bottom:20%;right:12%;font-size:2rem;opacity:0.12;animation:float2 6s ease-in-out infinite 2s;">♻️</span>
+        <span style="position:absolute;top:50%;left:50%;font-size:1.2rem;opacity:0.08;animation:float1 9s ease-in-out infinite 0.5s;">⭐</span>
+    </div>
+
+    <div class="login-card">
+        <div class="login-logo">🌿</div>
+        <h1 class="login-title">GreenCred</h1>
+        <p class="login-tagline">Strava for Eco Actions — Track, earn credits,<br>and compete to save the planet. 🌍</p>
+
+        <div class="login-stats">
+            <div>
+                <div class="login-stat-value">10K+</div>
+                <div class="login-stat-label">Actions</div>
+            </div>
+            <div>
+                <div class="login-stat-value">500+</div>
+                <div class="login-stat-label">Warriors</div>
+            </div>
+            <div>
+                <div class="login-stat-value">50K</div>
+                <div class="login-stat-label">GC Earned</div>
+            </div>
+        </div>
+
+        <!-- Google Sign In -->
+        <button class="btn-google" id="google-signin-btn" onclick="handleGoogleSignIn()">
+            <svg width="20" height="20" viewBox="0 0 20 20">
+                <path d="M19.6 10.23c0-.82-.1-1.42-.25-2.05H10v3.72h5.5c-.15.96-.74 2.31-2.04 3.22v2.45h3.16c1.89-1.73 2.98-4.3 2.98-7.34z" fill="#4285F4"/>
+                <path d="M10 20c2.7 0 4.96-.89 6.62-2.43l-3.16-2.45c-.89.6-2.04 1.02-3.46 1.02-2.65 0-4.9-1.77-5.7-4.15H1.07v2.53C2.72 17.75 6.09 20 10 20z" fill="#34A853"/>
+                <path d="M4.3 11.99c-.2-.6-.32-1.24-.32-1.99s.12-1.38.31-1.99V5.48H1.07C.38 6.84 0 8.37 0 10s.38 3.16 1.07 4.52l3.23-2.53z" fill="#FBBC05"/>
+                <path d="M10 3.88c1.52 0 2.86.52 3.92 1.54l2.84-2.84C14.96.99 12.7 0 10 0 6.09 0 2.72 2.25 1.07 5.48l3.23 2.53C5.1 5.65 7.35 3.88 10 3.88z" fill="#EA4335"/>
+            </svg>
+            <span id="google-btn-text">Continue with Google</span>
+        </button>
+
+        <!-- Firebase status indicator -->
+        <div id="firebase-status" style="margin-top:10px;font-size:0.72rem;text-align:center;"></div>
+
+        <!-- Divider -->
+        <div style="margin:16px 0;position:relative;text-align:center;">
+            <div style="height:1px;background:rgba(255,255,255,0.15);margin:0 20px;"></div>
+            <span style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);background:transparent;padding:0 10px;color:rgba(255,255,255,0.4);font-size:0.75rem;">or try demo accounts</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <p style="color:rgba(255,255,255,0.4);font-size:0.78rem;text-align:center;margin-bottom:4px;">Demo accounts (no login required)</p>
+            <button class="btn-demo" id="demo-arjun" onclick="loginAsDemo('demo-arjun-sharma','Arjun Sharma','arjun@greencred.demo','https://ui-avatars.com/api/?name=Arjun+Sharma&background=166534&color=fff&size=128')">
+                🌳 Login as Arjun Sharma <span style="opacity:0.6;font-size:0.75rem">(Ecosystem Builder)</span>
+            </button>
+            <button class="btn-demo" id="demo-priya" onclick="loginAsDemo('demo-priya-nair','Priya Nair','priya@greencred.demo','https://ui-avatars.com/api/?name=Priya+Nair&background=0d9488&color=fff&size=128')">
+                🌿 Login as Priya Nair <span style="opacity:0.6;font-size:0.75rem">(Grove Keeper)</span>
+            </button>
+            <button class="btn-demo" id="demo-rohit" onclick="loginAsDemo('demo-rohit-verma','Rohit Verma','rohit@greencred.demo','https://ui-avatars.com/api/?name=Rohit+Verma&background=4ade80&color=14532d&size=128')">
+                🌱 Login as Rohit Verma <span style="opacity:0.6;font-size:0.75rem">(Sprout)</span>
+            </button>
+        </div>
+
+        <p style="margin-top:20px;color:rgba(255,255,255,0.25);font-size:0.7rem;">
+            🌱 <a href="/seed/" style="color:rgba(132,204,22,0.6);text-decoration:underline;">Seed demo data</a> first if the app is empty
+        </p>
+    </div>
+</div>
+
+<!-- Firebase Setup Banner (shown when Firebase not configured) -->
+<div id="firebase-setup-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(22,101,52,0.95);backdrop-filter:blur(10px);padding:14px 20px;text-align:center;z-index:9999;border-top:1px solid rgba(132,204,22,0.3);">
+    <span style="color:#fff;font-size:0.85rem;font-weight:600;">
+        🔧 To enable Google Sign-In: paste your Firebase config in
+        <code style="background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-size:0.8rem;">static/js/firebase-config.js</code>
+        and set <code style="background:rgba(255,255,255,0.15);padding:2px 6px;border-radius:4px;font-size:0.8rem;">FIREBASE_CONFIGURED = true</code>
+    </span>
+    <button onclick="this.parentNode.style.display='none'" style="color:rgba(255,255,255,0.5);font-size:1.1rem;margin-left:12px;background:none;border:none;cursor:pointer;">✕</button>
+</div>
+
+<div id="toast-container"></div>
+
+<style>
+    @keyframes float1 {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(-20px) rotate(10deg); }
+    }
+    @keyframes float2 {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        50% { transform: translateY(15px) rotate(-8deg); }
+    }
+    #google-signin-btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+        transform: none !important;
+    }
+</style>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth.js"></script>
+<script src="/static/js/firebase-config.js"></script>
+<script>
+let firebaseApp = null;
+let firebaseAuth = null;
+let firebaseReady = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Redirect if already logged in
+    const user = getCurrentUser();
+    if (user) {
+        window.location.href = '/';
+        return;
+    }
+
+    // Initialize Firebase if configured
+    initFirebase();
+});
+
+function initFirebase() {
+    const statusEl = document.getElementById('firebase-status');
+    const bannerEl = document.getElementById('firebase-setup-banner');
+
+    if (typeof FIREBASE_CONFIG === 'undefined' || !FIREBASE_CONFIGURED) {
+        statusEl.innerHTML = `<span style="color:rgba(255,200,0,0.7);">⚠️ Firebase not configured — Google Sign-In unavailable</span>`;
+        bannerEl.style.display = 'block';
+        return;
+    }
+
+    try {
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebaseApp = firebase.initializeApp(FIREBASE_CONFIG);
+            } else {
+                firebaseApp = firebase.app();
+            }
+            firebaseAuth = firebase.auth();
+            firebaseReady = true;
+
+            // Set persistence
+            firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+
+            // Check if user is already signed in via Firebase
+            firebaseAuth.onAuthStateChanged(async (fbUser) => {
+                if (fbUser) {
+                    const storedGcUser = getCurrentUser();
+                    if (!storedGcUser) {
+                        // Firebase session exists but no GreenCred session → auto-login
+                        await handleFirebaseUser(fbUser);
+                    }
+                }
+            });
+
+            statusEl.innerHTML = `<span style="color:rgba(132,204,22,0.8);">✅ Google Sign-In ready</span>`;
+        }
+    } catch (err) {
+        console.error('Firebase init error:', err);
+        statusEl.innerHTML = `<span style="color:rgba(255,100,100,0.8);">❌ Firebase error: ${err.message}</span>`;
+    }
+}
+
+async function handleGoogleSignIn() {
+    if (!firebaseReady) {
+        showToast('Firebase not configured. Use the demo accounts below. 👇', 'info', 4000);
+        document.getElementById('firebase-setup-banner').style.display = 'block';
+        return;
+    }
+
+    const btn = document.getElementById('google-signin-btn');
+    const btnText = document.getElementById('google-btn-text');
+    btn.disabled = true;
+    btnText.textContent = 'Signing in…';
+
+    try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.addScope('email');
+        provider.addScope('profile');
+
+        // Use popup (works for localhost + web apps)
+        const result = await firebaseAuth.signInWithPopup(provider);
+        await handleFirebaseUser(result.user);
+
+    } catch (err) {
+        console.error('Google sign-in error:', err);
+
+        if (err.code === 'auth/popup-blocked') {
+            showToast('Popup blocked. Please allow popups for this site.', 'error', 5000);
+        } else if (err.code === 'auth/cancelled-popup-request') {
+            // User closed the popup, ignore
+        } else if (err.code === 'auth/unauthorized-domain') {
+            showToast('Domain not authorized. Add localhost to Firebase → Authentication → Authorized domains.', 'error', 6000);
+        } else {
+            showToast('Sign-in failed: ' + (err.message || 'Unknown error'), 'error');
+        }
+
+        btn.disabled = false;
+        btnText.textContent = 'Continue with Google';
+    }
+}
+
+async function handleFirebaseUser(fbUser) {
+    const btn = document.getElementById('google-signin-btn');
+    const btnText = document.getElementById('google-btn-text');
+
+    try {
+        // Get the ID token to send to backend
+        const idToken = await fbUser.getIdToken();
+
+        // POST to Django to create/get UserProfile
+        const data = await authFirebase(idToken);
+
+        // Store user + token
+        setCurrentUser(data.user, idToken);
+
+        showToast(`Welcome, ${data.user.display_name}! 🌿`, 'success');
+
+        // Set up token refresh (Firebase tokens expire after 1 hour)
+        if (firebaseAuth) {
+            firebaseAuth.currentUser.getIdToken(true).then(newToken => {
+                localStorage.setItem('gc_token', newToken);
+            });
+        }
+
+        setTimeout(() => { window.location.href = '/'; }, 800);
+
+    } catch (err) {
+        showToast('Backend auth failed: ' + err.message, 'error');
+        document.getElementById('google-btn-text').textContent = 'Continue with Google';
+        if (btn) btn.disabled = false;
+    }
+}
+
+async function loginAsDemo(uid, name, email, photo) {
+    const btn = event.target.closest('button');
+    const original = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Signing in…';
+
+    try {
+        await signInDemo(uid, name, email, photo);
+    } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = original;
+        showToast('Login failed. Is Django running on port 8000?', 'error');
+    }
+}
+</script>
+</body>
+</html>

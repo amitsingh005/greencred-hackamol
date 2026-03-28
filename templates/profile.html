@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% block title %}Profile — GreenCred{% endblock %}
+
+{% block content %}
+<!-- Profile Banner -->
+<div class="profile-banner" id="profile-banner"></div>
+
+<!-- Profile Card -->
+<div class="profile-card" id="profile-card" style="position:relative;">
+    <img src="https://ui-avatars.com/api/?name=Loading&background=166534&color=fff" alt="Avatar" class="profile-avatar" id="profile-avatar">
+    <div class="profile-name" id="profile-name" style="margin-top:10px;">Loading…</div>
+    <div id="profile-rank-chip" style="margin-bottom:8px;"></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+        <span id="profile-gc" class="gc-chip">— GC</span>
+        <span id="profile-streak" class="streak-badge">🔥 — day streak</span>
+        <span id="profile-email" style="font-size:0.8rem;color:var(--text-muted);"></span>
+    </div>
+
+    <!-- Stats -->
+    <div class="profile-stats" id="profile-stats">
+        <div class="stat-card">
+            <div class="stat-value" id="stat-actions">—</div>
+            <div class="stat-label">Total Actions</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-trees">—</div>
+            <div class="stat-label">🌳 Trees Planted</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-cleanups">—</div>
+            <div class="stat-label">🧹 Cleanups</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="stat-challenges">—</div>
+            <div class="stat-label">🏆 Challenges</div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions Row -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div>
+        <button class="btn btn-outline btn-sm" id="share-profile-btn">📤 Share Profile</button>
+    </div>
+    <div id="edit-section" style="display:none;">
+        <button class="btn btn-ghost btn-sm" id="edit-name-btn">✏️ Edit Name</button>
+    </div>
+</div>
+
+<!-- Badges Section -->
+<div class="card" style="padding:24px;margin-bottom:24px;">
+    <h2 class="page-title" style="font-size:1.15rem;margin-bottom:16px;">🎖️ Badges</h2>
+    <div class="badges-grid" id="badges-grid">
+        <div class="skeleton" style="height:120px;border-radius:12px;"></div>
+        <div class="skeleton" style="height:120px;border-radius:12px;"></div>
+        <div class="skeleton" style="height:120px;border-radius:12px;"></div>
+    </div>
+</div>
+
+<!-- Recent Actions -->
+<div class="card" style="padding:24px;">
+    <h2 class="page-title" style="font-size:1.15rem;margin-bottom:16px;">🌿 Recent Actions</h2>
+    <div id="profile-actions">
+        <div class="skeleton" style="height:80px;border-radius:8px;margin-bottom:12px;"></div>
+        <div class="skeleton" style="height:80px;border-radius:8px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const currentUser = requireAuth();
+    if (!currentUser) return;
+
+    // Get UID from URL or use current user
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('uid') || currentUser.firebase_uid;
+    const isOwn = uid === currentUser.firebase_uid;
+
+    if (isOwn) {
+        document.getElementById('edit-section').style.display = 'block';
+    }
+
+    // Load profile
+    try {
+        const data = await getUser(uid);
+        const u = data.user;
+        renderProfile(u);
+        loadUserActions(uid);
+        loadBadges(u);
+    } catch (err) {
+        showToast('Could not load profile: ' + err.message, 'error');
+    }
+
+    function renderProfile(u) {
+        const avatar = u.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.display_name)}&background=166534&color=fff&size=200`;
+        document.getElementById('profile-avatar').src = avatar;
+        document.getElementById('profile-name').textContent = u.display_name;
+        document.getElementById('profile-email').textContent = u.email;
+
+        const rankClass = getRankClass(u.rank);
+        const rankEmoji = getRankEmoji(u.rank);
+        document.getElementById('profile-rank-chip').innerHTML = `<span class="rank-chip ${rankClass}">${rankEmoji} ${u.rank}</span>`;
+
+        document.getElementById('profile-gc').textContent = `🍃 ${u.green_credits} GC`;
+        document.getElementById('profile-streak').innerHTML = `🔥 ${u.streak} day streak`;
+
+        document.getElementById('stat-actions').textContent = u.total_actions;
+        document.getElementById('stat-trees').textContent = u.trees_planted;
+        document.getElementById('stat-cleanups').textContent = u.cleanups_done;
+        document.getElementById('stat-challenges').textContent = u.challenges_completed;
+
+        // Update page title
+        document.title = `${u.display_name} — GreenCred`;
+    }
+
+    async function loadUserActions(uid) {
+        const actionsEl = document.getElementById('profile-actions');
+        try {
+            const data = await getActions({ user: uid });
+            if (data.actions.length === 0) {
+                actionsEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🌱</div><div class="empty-state-title">No actions yet</div></div>`;
+                return;
+            }
+            actionsEl.innerHTML = data.actions.slice(0, 5).map(a => `
+                <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border-radius:var(--radius-md);margin-bottom:8px;" class="animate-in">
+                    <div style="width:48px;height:48px;border-radius:var(--radius-sm);overflow:hidden;flex-shrink:0;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;">
+                        ${a.image_display_url ? `<img src="${a.image_display_url}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.textContent='${getActionEmoji(a.action_type)}'">` : getActionEmoji(a.action_type)}
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;font-size:0.9rem;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.description}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted);">📍 ${a.location} · ${a.time_ago}</div>
+                    </div>
+                    <span class="gc-chip" style="font-size:0.78rem;padding:3px 8px;">+${a.credits_earned} GC</span>
+                </div>`).join('');
+        } catch (err) {
+            actionsEl.innerHTML = `<p style="color:var(--text-muted);">Could not load actions.</p>`;
+        }
+    }
+
+    async function loadBadges(profileUser) {
+        const grid = document.getElementById('badges-grid');
+        try {
+            const data = await getBadges();
+            const earned = profileUser.badges || [];
+            grid.innerHTML = data.badges.map(b => {
+                const hasEarned = earned.includes(b.badge_id);
+                return `
+                <div class="badge-item ${hasEarned ? '' : 'locked'}"
+                    onclick="${hasEarned ? `window.location='/badges/?id=${b.badge_id}'` : ''}">
+                    <div class="badge-emoji">${hasEarned ? b.emoji : '🔒'}</div>
+                    <div class="badge-name">${b.name}</div>
+                    ${hasEarned ? '' : `<div style="font-size:0.68rem;color:var(--text-muted);margin-top:3px;">${b.criteria}</div>`}
+                </div>`;
+            }).join('');
+        } catch (err) {
+            grid.innerHTML = `<p style="color:var(--text-muted);">Could not load badges.</p>`;
+        }
+    }
+
+    // Share Profile
+    document.getElementById('share-profile-btn').addEventListener('click', () => {
+        const url = `${window.location.origin}/profile/?uid=${uid}`;
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Profile URL copied to clipboard! 📤', 'success');
+        }).catch(() => {
+            showToast('Copy failed. URL: ' + url, 'info', 6000);
+        });
+    });
+
+    // Edit Name
+    const editBtn = document.getElementById('edit-name-btn');
+    if (editBtn) {
+        editBtn.addEventListener('click', () => {
+            const currentName = document.getElementById('profile-name').textContent;
+            const newName = prompt('Enter new display name:', currentName);
+            if (newName && newName.trim() !== currentName) {
+                updateUser(uid, { display_name: newName.trim() }).then(data => {
+                    document.getElementById('profile-name').textContent = data.user.display_name;
+                    const stored = getCurrentUser();
+                    if (stored) { stored.display_name = data.user.display_name; setCurrentUser(stored, getAuthToken()); }
+                    showToast('Name updated!', 'success');
+                }).catch(err => showToast('Update failed: ' + err.message, 'error'));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

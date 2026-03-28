@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% block title %}Feed — GreenCred{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">🌿 Eco Feed</h1>
+        <p class="page-subtitle">Discover environmental actions from your community</p>
+    </div>
+    <button class="btn btn-primary" id="open-log-modal-header">
+        <span>+</span> Log Action
+    </button>
+</div>
+
+<!-- Filter Pills -->
+<div class="filter-pills" id="filter-pills">
+    <button class="filter-pill active" data-filter="">All</button>
+    <button class="filter-pill" data-filter="tree_planting">🌳 Tree Planting</button>
+    <button class="filter-pill" data-filter="cleanup">🧹 Cleanup</button>
+    <button class="filter-pill" data-filter="upcycling">♻️ Upcycling</button>
+    <button class="filter-pill" data-filter="transport">🚲 Transport</button>
+    <button class="filter-pill" data-filter="energy">⚡ Energy</button>
+    <button class="filter-pill" data-filter="advocacy">📣 Advocacy</button>
+</div>
+
+<!-- Feed -->
+<div id="action-feed">
+    <!-- Skeletons shown while loading -->
+    <div class="skeleton-card" id="sk1">
+        <div class="skeleton sk-image"></div>
+        <div class="sk-body">
+            <div class="sk-header">
+                <div class="skeleton sk-avatar"></div>
+                <div class="sk-header-text">
+                    <div class="skeleton sk-line" style="width:60%;"></div>
+                    <div class="skeleton sk-line sk-line-sm" style="width:40%;margin-top:6px;"></div>
+                </div>
+            </div>
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line sk-line-sm"></div>
+        </div>
+    </div>
+    <div class="skeleton-card" id="sk2">
+        <div class="skeleton sk-image"></div>
+        <div class="sk-body">
+            <div class="sk-header">
+                <div class="skeleton sk-avatar"></div>
+                <div class="sk-header-text">
+                    <div class="skeleton sk-line" style="width:50%;"></div>
+                    <div class="skeleton sk-line sk-line-sm" style="width:35%;margin-top:6px;"></div>
+                </div>
+            </div>
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line sk-line-sm"></div>
+        </div>
+    </div>
+</div>
+
+<!-- FAB -->
+<button class="fab-btn" id="fab-log-btn" title="Log Eco Action">+</button>
+
+<!-- Log Action Modal -->
+<div class="modal-overlay" id="log-modal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2 class="modal-title">🌿 Log Eco Action</h2>
+            <button class="modal-close" id="close-log-modal">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label" for="action-type">Action Type</label>
+                <select class="form-select" id="action-type" name="action_type">
+                    <option value="tree_planting">🌳 Tree Planting (+30 GC)</option>
+                    <option value="cleanup">🧹 Clean-up Drive (+25 GC)</option>
+                    <option value="upcycling">♻️ Upcycling / Repair (+20 GC)</option>
+                    <option value="transport">🚲 Sustainable Transport (+15 GC)</option>
+                    <option value="energy">⚡ Energy / Water Saving (+10 GC)</option>
+                    <option value="advocacy">📣 Community Advocacy (+10 GC)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="action-description">Description</label>
+                <textarea class="form-textarea" id="action-description" name="description"
+                    placeholder="What did you do? Share your eco story..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="action-location">Location</label>
+                <input class="form-input" type="text" id="action-location" name="location"
+                    placeholder="e.g. Lodhi Garden, Delhi">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="action-challenge">Link to Challenge (optional)</label>
+                <select class="form-select" id="action-challenge" name="challenge">
+                    <option value="">— No challenge —</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="action-image">Photo (optional)</label>
+                <input class="form-input" type="file" id="action-image" name="image"
+                    accept="image/*" style="padding:8px 12px;">
+            </div>
+
+            <div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;font-size:0.82rem;color:var(--text-muted);">
+                ℹ️ Streak bonus applies automatically. Longer streaks earn more GC!
+            </div>
+
+            <button class="btn btn-primary btn-full btn-lg" id="submit-action-btn">
+                🌿 Submit Action
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/api.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const user = requireAuth();
+    if (!user) return;
+
+    let currentFilter = '';
+
+    // ── Modal ─────────────────────────────────────────────────────────────
+    const modal = document.getElementById('log-modal');
+    const openModalBtns = [
+        document.getElementById('open-log-modal-header'),
+        document.getElementById('fab-log-btn'),
+    ];
+    const closeModal = document.getElementById('close-log-modal');
+
+    openModalBtns.forEach(btn => {
+        if (btn) btn.addEventListener('click', () => modal.classList.add('open'));
+    });
+
+    closeModal.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('open');
+    });
+
+    // Load challenges for dropdown
+    getChallenges().then(data => {
+        const sel = document.getElementById('action-challenge');
+        data.challenges.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.title;
+            sel.appendChild(opt);
+        });
+    }).catch(() => {});
+
+    // ── Submit Action ──────────────────────────────────────────────────────
+    document.getElementById('submit-action-btn').addEventListener('click', async () => {
+        const actionType = document.getElementById('action-type').value;
+        const description = document.getElementById('action-description').value.trim();
+        const location = document.getElementById('action-location').value.trim();
+        const challengeId = document.getElementById('action-challenge').value;
+        const imageFile = document.getElementById('action-image').files[0];
+
+        if (!description) { showToast('Please add a description', 'error'); return; }
+        if (!location) { showToast('Please add a location', 'error'); return; }
+
+        const formData = new FormData();
+        formData.append('action_type', actionType);
+        formData.append('description', description);
+        formData.append('location', location);
+        if (challengeId) formData.append('challenge', challengeId);
+        if (imageFile) formData.append('image', imageFile);
+
+        const btn = document.getElementById('submit-action-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Submitting...';
+
+        try {
+            const result = await createAction(formData);
+            modal.classList.remove('open');
+            showToast(`✅ +${result.credits_earned} GreenCredits earned!`, 'success');
+
+            // Badge toasts
+            if (result.newly_awarded_badges && result.newly_awarded_badges.length > 0) {
+                setTimeout(() => {
+                    result.newly_awarded_badges.forEach(badgeId => {
+                        showToast(`🏅 New Badge Unlocked: ${badgeId.replace(/_/g, ' ')}!`, 'badge', 5000);
+                    });
+                }, 1000);
+            }
+
+            // Update stored user
+            const stored = getCurrentUser();
+            if (stored) {
+                stored.green_credits = result.new_total_credits;
+                stored.rank = result.new_rank;
+                stored.streak = result.new_streak;
+                setCurrentUser(stored, getAuthToken());
+            }
+
+            // Reset form
+            document.getElementById('action-description').value = '';
+            document.getElementById('action-location').value = '';
+            document.getElementById('action-image').value = '';
+
+            // Reload feed
+            loadFeed(currentFilter);
+        } catch (err) {
+            showToast('Failed to submit: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '🌿 Submit Action';
+        }
+    });
+
+    // ── Filter Pills ──────────────────────────────────────────────────────
+    document.querySelectorAll('#filter-pills .filter-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('#filter-pills .filter-pill').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            loadFeed(currentFilter);
+        });
+    });
+
+    // ── Load Feed ──────────────────────────────────────────────────────────
+    async function loadFeed(filter = '') {
+        const feed = document.getElementById('action-feed');
+        feed.innerHTML = renderSkeletons(3);
+
+        try {
+            const filters = {};
+            if (filter) filters.type = filter;
+            const data = await getActions(filters);
+
+            if (data.actions.length === 0) {
+                feed.innerHTML = `
+                    <div class="empty-state card" style="padding:60px 20px;">
+                        <div class="empty-state-icon">🌱</div>
+                        <div class="empty-state-title">No actions yet</div>
+                        <p class="empty-state-text">Be the first to log an eco action, or seed demo data to get started.</p>
+                        <a href="/seed/" class="btn btn-accent">🌱 Seed Demo Data</a>
+                    </div>`;
+                return;
+            }
+
+            feed.innerHTML = data.actions.map(renderActionCard).join('');
+
+            // Attach like handlers
+            feed.querySelectorAll('.like-btn').forEach(btn => {
+                btn.addEventListener('click', () => handleLike(btn));
+            });
+
+        } catch (err) {
+            feed.innerHTML = `<div class="empty-state card"><div class="empty-state-icon">⚠️</div>
+                <div class="empty-state-title">Could not load feed</div>
+                <p class="empty-state-text">${err.message}</p></div>`;
+        }
+    }
+
+    function renderSkeletons(count) {
+        return Array.from({length: count}).map(() => `
+            <div class="skeleton-card">
+                <div class="skeleton sk-image"></div>
+                <div class="sk-body">
+                    <div class="sk-header">
+                        <div class="skeleton sk-avatar"></div>
+                        <div class="sk-header-text">
+                            <div class="skeleton sk-line" style="width:55%;"></div>
+                            <div class="skeleton sk-line" style="width:35%;margin-top:6px;"></div>
+                        </div>
+                    </div>
+                    <div class="skeleton sk-line"></div>
+                    <div class="skeleton sk-line sk-line-sm"></div>
+                </div>
+            </div>`).join('');
+    }
+
+    function renderActionCard(action) {
+        const imgHtml = action.image_display_url
+            ? `<img class="action-card-image" src="${action.image_display_url}" alt="${escapeHtml(action.description)}" loading="lazy" onerror="this.parentNode.innerHTML='<div class=&quot;action-card-no-image&quot;>${getActionEmoji(action.action_type)}</div>'">`
+            : `<div class="action-card-no-image">${getActionEmoji(action.action_type)}</div>`;
+
+        const avatarSrc = action.user.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(action.user.display_name)}&background=166534&color=fff`;
+        const likedClass = action.is_liked ? 'liked' : '';
+        const rankClass = getRankClass(action.user.rank);
+        const rankEmoji = getRankEmoji(action.user.rank);
+
+        const challengeTag = action.challenge_title
+            ? `<span class="challenge-tag">⚡ ${escapeHtml(action.challenge_title)}</span>`
+            : '';
+
+        return `
+        <div class="action-card animate-in">
+            ${imgHtml}
+            <div class="action-card-body">
+                <div class="action-card-header">
+                    <a href="/profile/?uid=${action.user.firebase_uid}">
+                        <img class="action-card-avatar" src="${avatarSrc}" alt="${escapeHtml(action.user.display_name)}"
+                             onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(action.user.display_name)}&background=166534&color=fff'">
+                    </a>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                            <a href="/profile/?uid=${action.user.firebase_uid}" style="font-weight:700;color:var(--text-dark);font-size:0.95rem;">${escapeHtml(action.user.display_name)}</a>
+                            <span class="rank-chip ${rankClass}">${rankEmoji} ${action.user.rank}</span>
+                        </div>
+                        <div class="action-card-time">${action.time_ago}</div>
+                    </div>
+                    <span class="pill pill-${action.action_type}">${getActionEmoji(action.action_type)} ${getActionLabel(action.action_type)}</span>
+                </div>
+
+                <p class="action-card-description">${escapeHtml(action.description)}</p>
+
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+                    <div class="action-card-location">📍 ${escapeHtml(action.location)}</div>
+                    ${challengeTag}
+                </div>
+
+                <div class="action-card-footer">
+                    <div class="action-card-actions">
+                        <button class="like-btn ${likedClass}" data-action-id="${action.id}" data-liked="${action.is_liked}">
+                            <span class="like-btn-icon">${action.is_liked ? '❤️' : '🤍'}</span>
+                            <span class="like-count">${action.likes}</span>
+                        </button>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <span class="gc-chip">🍃 +${action.credits_earned} GC</span>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    async function handleLike(btn) {
+        const actionId = btn.dataset.actionId;
+        const user = getCurrentUser();
+        if (!user) { showToast('Sign in to like actions', 'info'); return; }
+
+        try {
+            const result = await likeAction(actionId);
+            const icon = btn.querySelector('.like-btn-icon');
+            const count = btn.querySelector('.like-count');
+            count.textContent = result.likes;
+            if (result.liked) {
+                btn.classList.add('liked');
+                icon.textContent = '❤️';
+            } else {
+                btn.classList.remove('liked');
+                icon.textContent = '🤍';
+            }
+        } catch (err) {
+            showToast('Could not update like', 'error');
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Initial load
+    loadFeed();
+});
+</script>
+{% endblock %}
